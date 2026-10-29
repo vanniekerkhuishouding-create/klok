@@ -534,6 +534,21 @@
   $('s-done').addEventListener('click', goHome);
   document.addEventListener('pointerdown', resetIdle);
 
+  // Android back button: never leave the page; go to the names screen instead.
+  // Chrome ignores history entries added without a tap, so we add a spare
+  // "back" entry on taps (one per tap, keeping up to 3 in reserve).
+  var guards = 0;
+  document.addEventListener('pointerdown', function () {
+    if (guards < 3) {
+      try { history.pushState({ klokGuard: true }, ''); guards++; } catch (e) { /* ignore */ }
+    }
+  }, true);
+  window.addEventListener('popstate', function () {
+    guards = Math.max(0, guards - 1);
+    if ($('s-setup').classList.contains('on')) return;
+    if (!busy) goHome();
+  });
+
   // Hidden way back into setup: hold the logo for 5 seconds
   (function () {
     var t = null;
