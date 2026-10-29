@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#2E4A3B">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Huishouding Klok</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+<!-- =====================================================================
+     SETUP STEP: paste your Google web app URL between the quotes below.
+     It ends in /exec
+     ===================================================================== -->
+<script>
+  var API_URL = 'https://script.google.com/macros/s/AKfycbz1irmH1wX6BC88efsHPDtnjg5-ovM9jjYxmplXuRpEuxLSxR44fEMg7VFW0yPRPvLn6g/exec';
+</script>
+<style>
+  :root {
+    --green: #2E4A3B;
+    --green-2: #35553F;
+    --green-3: #456B52;
+    --cream: #F3E9D2;
+    --cream-2: #E7DABD;
+    --ochre: #D9A441;
+    --ochre-dark: #B7842A;
+    --ink: #1F2E25;
+    --red: #B5462F;
+    --muted: rgba(243, 233, 210, 0.7);
+    --radius: 22px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--green);
+    color: var(--cream);
+    font-family: Montserrat, system-ui, sans-serif;
+    user-select: none; -webkit-user-select: none;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  .app { display: flex; flex-direction: column; height: 100%; padding: 20px 28px 24px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 0 0 auto; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand img { width: 52px; height: 52px; border-radius: 50%; }
+  .brand .name { font-family: 'Playfair Display', Georgia, serif; font-size: 26px; line-height: 1; }
+  .brand .sub { font-size: 12px; letter-spacing: 4px; color: var(--ochre); margin-top: 4px; font-weight: 600; }
+  .clock { text-align: right; }
+  .clock .time { font-size: 54px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock .date { font-size: 16px; color: var(--muted); margin-top: 4px; }
+
+  main { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+  .screen { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px; width: 100%; }
+  .screen.on { display: flex; }
+
+  h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 40px; margin: 0; text-align: center; }
+  .hint { font-size: 20px; color: var(--muted); text-align: center; margin: 0; }
+  .en { display: block; font-size: 0.62em; font-weight: 500; opacity: 0.75; margin-top: 4px; }
+
+  /* Home: worker tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
+  .tile {
+    background: var(--cream); color: var(--ink); border: 0; border-radius: var(--radius);
+    padding: 26px 22px; text-align: left; font: inherit; cursor: pointer;
+    display: flex; flex-direction: column; gap: 10px; min-height: 190px;
+    box-shadow: 0 6px 0 var(--cream-2);
+    transition: transform .08s ease;
+  }
+  .tile:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--cream-2); }
+  .tile .who { font-family: 'Playfair Display', Georgia, serif; font-size: 36px; }
+  .tile .role { font-size: 14px; letter-spacing: 2px; text-transform: uppercase; color: #6b6450; font-weight: 600; }
+  .tile .state { margin-top: auto; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; background: #a39a83; }
+  .tile.working .dot { background: #3E8E5A; }
+  .tile.lunch .dot { background: var(--ochre); }
+  .tile.done { opacity: 0.55; }
+  .tile.done .dot { background: var(--green); }
+
+  /* Action buttons */
+  .actions { display: flex; flex-wrap: wrap; gap: 22px; justify-content: center; width: 100%; }
+  .act {
+    border: 0; border-radius: var(--radius); font: inherit; cursor: pointer;
+    min-width: 300px; padding: 30px 34px; font-size: 32px; font-weight: 700;
+    display: flex; align-items: center; gap: 20px; text-align: left;
+    background: var(--ochre); color: var(--ink); box-shadow: 0 6px 0 var(--ochre-dark);
+  }
+  .act:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--ochre-dark); }
+  .act.alt { background: var(--cream); box-shadow: 0 6px 0 var(--cream-2); }
+  .act svg { width: 46px; height: 46px; flex: 0 0 46px; }
+
+  .back {
+    background: transparent; color: var(--cream); border: 2px solid rgba(243,233,210,.35);
+    border-radius: 999px; padding: 14px 30px; font: inherit; font-size: 18px; font-weight: 600; cursor: pointer;
+  }
+
+  /* PIN */
+  .pinwrap { display: flex; gap: 48px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .cam { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .cam video, .cam .nocam {
+    width: 220px; height: 220px; border-radius: 50%; object-fit: cover; transform: scaleX(-1);
+    border: 6px solid var(--ochre); background: var(--green-2);
+  }
+  .cam .nocam { display: none; align-items: center; justify-content: center; text-align: center; padding: 30px; transform: none; font-size: 15px; color: var(--muted); }
+  .cam.off video { display: none; }
+  .cam.off .nocam { display: flex; }
+  .cam .label { font-size: 16px; color: var(--muted); text-align: center; }
+  .dots { display: flex; gap: 18px; justify-content: center; margin-bottom: 18px; }
+  .dots span { width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--cream); }
+  .dots span.f { background: var(--cream); }
+  .dots.shake { animation: shake .4s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-12px); } 40%, 80% { transform: translateX(12px); } }
+  .pad { display: grid; grid-template-columns: repeat(3, 92px); gap: 14px; }
+  .pad button {
+    height: 82px; border-radius: 20px; border: 0; font: inherit; font-size: 34px; font-weight: 600; cursor: pointer;
+    background: var(--green-3); color: var(--cream);
+  }
+  .pad button:active { background: var(--ochre); color: var(--ink); }
+  .pad .blank { visibility: hidden; }
+  .err { min-height: 28px; color: #F2B8A5; font-size: 20px; font-weight: 600; text-align: center; }
+
+  /* Done */
+  .tick { width: 150px; height: 150px; border-radius: 50%; background: var(--ochre); display: flex; align-items: center; justify-content: center; }
+  .tick svg { width: 84px; height: 84px; }
+  .tick.bad { background: var(--red); }
+  .big-time { font-size: 72px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  .spinner { width: 70px; height: 70px; border-radius: 50%; border: 7px solid rgba(243,233,210,.25); border-top-color: var(--ochre); animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .banner { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--red); color: #fff;
+            padding: 12px 24px; border-radius: 999px; font-weight: 600; display: none; z-index: 5; }
+  .banner.on { display: block; }
+
+  /* Setup */
+  .setup input { font: inherit; font-size: 32px; padding: 16px 20px; border-radius: 16px; border: 0; width: 320px; text-align: center; letter-spacing: 6px; text-transform: uppercase; user-select: text; -webkit-user-select: text; }
+
+  @media (max-width: 760px) {
+    .app { padding: 14px 16px 18px; }
+    .clock .time { font-size: 38px; }
+    .brand .name { font-size: 20px; }
+    .brand img { width: 40px; height: 40px; }
+    h1 { font-size: 30px; }
+    .act { min-width: 0; width: 100%; font-size: 26px; padding: 24px; }
+    .pinwrap { gap: 20px; }
+    .cam video, .cam .nocam { width: 140px; height: 140px; }
+    .pad { grid-template-columns: repeat(3, 80px); }
+    .pad button { height: 70px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand" id="brand">
+      <img src="icon-192.png" alt="">
+      <div>
+        <div class="name">Van Niekerk</div>
+        <div class="sub">HUISHOUDING</div>
+      </div>
+    </div>
+    <div class="clock">
+      <div class="time" id="clockTime">--:--</div>
+      <div class="date" id="clockDate">&nbsp;</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Loading -->
+    <section class="screen on" id="s-loading">
+      <div class="spinner"></div>
+      <p class="hint">Loading...</p>
+    </section>
+
+    <!-- Home -->
+    <section class="screen" id="s-home">
+      <p class="hint">Tap your name</p>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- Choose action -->
+    <section class="screen" id="s-actions">
+      <h1 id="actName"></h1>
+      <div class="actions" id="actions"></div>
+      <button class="back" data-home>&larr; Back</button>
+    </section>
+
+    <!-- PIN -->
+    <section class="screen" id="s-pin">
+      <h1 id="pinTitle"></h1>
+      <div class="pinwrap">
+        <div class="cam" id="cam">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="nocam">Camera not available</div>
+          <div class="label">Look at the camera</div>
+        </div>
+        <div>
+          <div class="dots" id="dots"><span></span><span></span><span></span><span></span></div>
+          <div class="pad" id="pad"></div>
+          <div class="err" id="pinErr"></div>
+        </div>
+      </div>
+      <button class="back" data-home>&larr; Back</button>
+    </section>
+
+    <!-- Working -->
+    <section class="screen" id="s-busy">
+      <div class="spinner"></div>
+      <p class="hint">Saving...</p>
+    </section>
+
+    <!-- Done / message -->
+    <section class="screen" id="s-done">
+      <div class="tick" id="doneTick"></div>
+      <h1 id="doneTitle"></h1>
+      <div class="big-time" id="doneTime"></div>
+      <p class="hint" id="doneNote"></p>
+    </section>
+
+    <!-- First-time setup -->
+    <section class="screen setup" id="s-setup">
+      <h1>Setup</h1>
+      <p class="hint" id="setupMsg">Type the device key from the Google Sheet.</p>
+      <input id="keyInput" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20">
+      <div class="actions"><button class="act" id="keySave">Save</button></div>
+    </section>
+  </main>
+</div>
+<div class="banner" id="banner">No internet</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- configuration ----------
+  var params = new URLSearchParams(location.search);
+  var api = params.get('api') || API_URL; // ?api= is only for testing
+  var IDLE_MS = 30000;
+  var DONE_MS = 5000;
+  var REFRESH_MS = 60000;
+
+  var LABELS = {
+    IN:        { text: 'Start work',       cls: '' },
+    LUNCH_OUT: { text: 'Out to lunch',     cls: 'alt' },
+    LUNCH_IN:  { text: 'Back from lunch',  cls: '' },
+    OUT:       { text: 'Finish for today', cls: 'alt' }
+  };
+  var ICONS = {
+    IN: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
+    LUNCH_OUT: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v8a3 3 0 0 0 6 0V3"/><path d="M7 3v18"/><path d="M17 3c-2 2-3 5-3 8h4V3z"/><path d="M18 11v10"/></svg>',
+    LUNCH_IN: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-5-5 5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>',
+    OUT: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>'
+  };
+  var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1F2E25" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  var CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
+                'September', 'October', 'November', 'December'];
+
+  // ---------- state ----------
+  var key = store('get', 'klok_key') || '';
+  var offset = 0;         // server time minus tablet time (display only — the server stamps the real time)
+  var workers = [];
+  var current = null;     // {worker, action}
+  var pin = '';
+  var stream = null;
+  var idleTimer = null, doneTimer = null, refreshTimer = null;
+  var busy = false;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function store(op, k, v) {
+    try {
+      if (op === 'get') return localStorage.getItem(k);
+      if (op === 'set') localStorage.setItem(k, v);
+    } catch (e) { /* storage unavailable: the key must be typed again after a restart */ }
+    return null;
+  }
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(function (s) { s.classList.toggle('on', s.id === id); });
+    resetIdle();
+  }
+
+  // ---------- clock ----------
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function saNow() { return new Date(Date.now() + offset + 2 * 3600 * 1000); } // SAST = UTC+2, no daylight saving
+  function tick() {
+    var d = saNow();
+    $('clockTime').textContent = pad2(d.getUTCHours()) + ':' + pad2(d.getUTCMinutes());
+    $('clockDate').textContent = DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()];
+  }
+  setInterval(tick, 1000); tick();
+
+  // ---------- network ----------
+  function call(op, payload) {
+    var body = Object.assign({ op: op, key: key }, payload || {});
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 30000);
+    var sent = Date.now();
+    return fetch(api, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // keeps the request "simple" so Google accepts it
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+      redirect: 'follow'
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      clearTimeout(timer);
+      $('banner').classList.remove('on');
+      if (res && res.serverTime) offset = res.serverTime - (sent + Date.now()) / 2;
+      return res;
+    }, function (err) {
+      clearTimeout(timer);
+      $('banner').classList.add('on');
+      throw err;
+    });
+  }
+
+  // ---------- home ----------
+  function loadStatus(showLoading) {
+    if (!api || api.indexOf('PASTE_') === 0) {
+      $('setupMsg').textContent = 'The web app URL has not been pasted into index.html yet.';
+      $('keyInput').style.display = 'none'; $('keySave').style.display = 'none';
+      show('s-setup'); return;
+    }
+    if (!key) { show('s-setup'); return; }
+    if (showLoading) show('s-loading');
+    call('status').then(function (res) {
+      if (!res.ok && res.error === 'bad_key') {
+        $('setupMsg').textContent = 'That key is wrong. Try again.';
+        show('s-setup'); return;
+      }
+      if (!res.ok) throw new Error(res.error);
+      workers = res.workers;
+      renderTiles();
+      if (showLoading || $('s-home').classList.contains('on')) show('s-home');
+    }).catch(function () {
+      if (showLoading) { renderTiles(); show('s-home'); }
+    });
+  }
+
+  function stateOf(w) {
+    var e = w.events || {};
+    if (e.OUT) return { cls: 'done', text: 'Finished at ' + e.OUT };
+    if (e.LUNCH_OUT && !e.LUNCH_IN) return { cls: 'lunch', text: 'At lunch since ' + e.LUNCH_OUT };
+    if (e.IN) return { cls: 'working', text: 'Working since ' + e.IN };
+    return { cls: '', text: 'Not clocked in yet' };
+  }
+
+  function renderTiles() {
+    var box = $('tiles');
+    box.innerHTML = '';
+    if (!workers.length) {
+      box.innerHTML = '<p class="hint">Could not load the names. Please wait a moment.</p>';
+      return;
+    }
+    workers.forEach(function (w) {
+      var s = stateOf(w);
+      var b = document.createElement('button');
+      b.className = 'tile ' + s.cls;
+      b.innerHTML = '<div class="role"></div><div class="who"></div><div class="state"><span class="dot"></span><span class="txt"></span></div>';
+      b.querySelector('.role').textContent = w.role || '';
+      b.querySelector('.who').textContent = w.name;
+      b.querySelector('.txt').textContent = s.text;
+      b.addEventListener('click', function () { chooseWorker(w); });
+      box.appendChild(b);
+    });
+  }
+
+  // ---------- actions ----------
+  function chooseWorker(w) {
+    if (!w.next || !w.next.length) {
+      message(true, w.name, 'Finished for today', 'You have already clocked out today.', '');
+      return;
+    }
+    $('actName').textContent = w.name;
+    var box = $('actions');
+    box.innerHTML = '';
+    w.next.forEach(function (a) {
+      var l = LABELS[a];
+      var b = document.createElement('button');
+      b.className = 'act ' + l.cls;
+      b.innerHTML = ICONS[a] + '<span>' + l.text + '</span>';
+      b.addEventListener('click', function () { chooseAction(w, a); });
+      box.appendChild(b);
+    });
+    startCamera(); // warm up the camera while she chooses
+    show('s-actions');
+  }
+
+  function chooseAction(w, a) {
+    current = { worker: w, action: a };
+    pin = '';
+    renderDots();
+    $('pinErr').textContent = '';
+    $('pinTitle').textContent = w.name + ' — ' + LABELS[a].text;
+    show('s-pin');
+  }
+
+  // ---------- PIN pad ----------
+  (function buildPad() {
+    var keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '<'];
+    keys.forEach(function (k) {
+      var b = document.createElement('button');
+      b.textContent = k === '<' ? '⌫' : (k === 'C' ? '' : k);
+      if (k === 'C') b.className = 'blank';
+      b.addEventListener('click', function () { pressKey(k); });
+      $('pad').appendChild(b);
+    });
+  })();
+
+  function pressKey(k) {
+    if (busy) return;
+    resetIdle();
+    if (k === '<') pin = pin.slice(0, -1);
+    else if (/\d/.test(k) && pin.length < 4) pin += k;
+    $('pinErr').textContent = '';
+    renderDots();
+    if (pin.length === 4) setTimeout(submit, 150);
+  }
+
+  function renderDots() {
+    var spans = $('dots').children;
+    for (var i = 0; i < 4; i++) spans[i].classList.toggle('f', i < pin.length);
+  }
+
+  // ---------- camera ----------
+  function startCamera() {
+    if (stream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('cam').classList.add('off'); return; }
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
+      .then(function (s) {
+        stream = s;
+        $('video').srcObject = s;
+        $('cam').classList.remove('off');
+      })
+      .catch(function () { $('cam').classList.add('off'); });
+  }
+
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    stream = null;
+    $('video').srcObject = null;
+  }
+
+  function snap() {
+    var v = $('video');
+    if (!stream || !v.videoWidth) return '';
+    var w = 480, h = Math.round(v.videoHeight * (w / v.videoWidth));
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    c.getContext('2d').drawImage(v, 0, 0, w, h);
+    return c.toDataURL('image/jpeg', 0.72);
+  }
+
+  // ---------- submit ----------
+  function submit() {
+    if (busy || !current) return;
+    busy = true;
+    var photo = snap();
+    var cur = current;
+    show('s-busy');
+    call('clock', { workerId: cur.worker.id, action: cur.action, pin: pin, photo: photo })
+      .then(function (res) {
+        busy = false;
+        if (res.ok) {
+          stopCamera();
+          message(false, res.name, LABELS[res.action].text, '', res.time,
+                  res.photo ? '' : 'No photo was taken');
+          loadStatus(false);
+          return;
+        }
+        if (res.error === 'bad_pin') {
+          pin = ''; renderDots();
+          show('s-pin');
+          $('dots').classList.remove('shake'); void $('dots').offsetWidth; $('dots').classList.add('shake');
+          $('pinErr').textContent = 'Wrong PIN' + (res.left ? ' (' + res.left + ' tries left)' : '');
+          return;
+        }
+        stopCamera();
+        if (res.error === 'locked') {
+          message(true, cur.worker.name, 'Locked for ' + res.minutes + ' minutes',
+                  'Too many wrong PINs. Try again later.', '');
+        } else if (res.error === 'not_allowed') {
+          message(true, cur.worker.name, 'Not possible right now', 'This was already recorded.', '');
+          loadStatus(false);
+        } else if (res.error === 'bad_key') {
+          show('s-setup');
+        } else {
+          message(true, cur.worker.name, 'Something went wrong', 'Nothing was saved. Please try again.', '');
+        }
+      })
+      .catch(function () {
+        busy = false;
+        stopCamera();
+        message(true, cur.worker.name, 'No internet', 'Nothing was saved. Please try again in a minute.', '');
+      });
+  }
+
+  function message(bad, title, line, note, time, extra) {
+    $('doneTick').className = 'tick' + (bad ? ' bad' : '');
+    $('doneTick').innerHTML = bad ? CROSS : TICK;
+    $('doneTitle').innerHTML = '';
+    $('doneTitle').appendChild(document.createTextNode(title + ' — ' + line));
+    if (!bad) {
+      var en = document.createElement('span'); en.className = 'en'; en.textContent = note; $('doneTitle').appendChild(en);
+    }
+    $('doneTime').textContent = time || '';
+    $('doneNote').textContent = bad ? note : (extra || '');
+    show('s-done');
+    clearTimeout(doneTimer);
+    doneTimer = setTimeout(goHome, DONE_MS);
+  }
+
+  // ---------- navigation ----------
+  function goHome() {
+    current = null; pin = ''; busy = false;
+    stopCamera();
+    clearTimeout(doneTimer);
+    show('s-home');
+  }
+
+  function resetIdle() {
+    clearTimeout(idleTimer);
+    if (!$('s-home').classList.contains('on') && !$('s-setup').classList.contains('on')) {
+      idleTimer = setTimeout(function () { if (!busy) goHome(); }, IDLE_MS);
+    }
+  }
+
+  document.querySelectorAll('[data-home]').forEach(function (b) { b.addEventListener('click', goHome); });
+  $('s-done').addEventListener('click', goHome);
+  document.addEventListener('pointerdown', resetIdle);
+
+  // Hidden way back into setup: hold the logo for 5 seconds
+  (function () {
+    var t = null;
+    $('brand').addEventListener('pointerdown', function () { t = setTimeout(function () { $('keyInput').value = ''; show('s-setup'); }, 5000); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { $('brand').addEventListener(ev, function () { clearTimeout(t); }); });
+  })();
+
+  $('keySave').addEventListener('click', function () {
+    var v = $('keyInput').value.trim().toUpperCase();
+    if (!v) return;
+    key = v;
+    store('set', 'klok_key', v);
+    loadStatus(true);
+  });
+
+  // Keep the screen awake while the page is open
+  function wake() { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { wake(); loadStatus(false); } });
+  wake();
+
+  refreshTimer = setInterval(function () {
+    if ($('s-home').classList.contains('on')) loadStatus(false);
+  }, REFRESH_MS);
+
+  loadStatus(true);
+})();
+</script>
+</body>
+</html>
