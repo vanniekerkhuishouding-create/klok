@@ -127,6 +127,13 @@
   .tick svg { width: 84px; height: 84px; }
   .tick.bad { background: var(--red); }
   .big-time { font-size: 72px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .act.hours { background: transparent; color: var(--cream); border: 3px solid rgba(243,233,210,.45); box-shadow: none; font-size: 26px; padding: 22px 30px; }
+  .act.hours:active { transform: none; background: rgba(243,233,210,.12); }
+  .hours-box { display: none; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .hours-box.on { display: flex; }
+  .stat { background: var(--green-2); border-radius: 18px; padding: 18px 26px; min-width: 200px; text-align: center; }
+  .stat .v { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .k { font-size: 15px; color: var(--muted); margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
 
   .spinner { width: 70px; height: 70px; border-radius: 50%; border: 7px solid rgba(243,233,210,.25); border-top-color: var(--ochre); animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -146,6 +153,8 @@
     .brand img { width: 40px; height: 40px; }
     h1 { font-size: 30px; }
     .act { min-width: 0; width: 100%; font-size: 26px; padding: 24px; }
+    .stat { min-width: 0; flex: 1 1 100%; padding: 12px 16px; }
+    .stat .v { font-size: 26px; }
     .pinwrap { gap: 20px; }
     .cam video, .cam .nocam { width: 140px; height: 140px; }
     .pad { grid-template-columns: repeat(3, 80px); }
@@ -185,6 +194,7 @@
     <!-- Choose action -->
     <section class="screen" id="s-actions">
       <h1 id="actName"></h1>
+      <p class="hint" id="actNote"></p>
       <div class="actions" id="actions"></div>
       <button class="back" data-home>&larr; Back</button>
     </section>
@@ -218,6 +228,7 @@
       <div class="tick" id="doneTick"></div>
       <h1 id="doneTitle"></h1>
       <div class="big-time" id="doneTime"></div>
+      <div class="hours-box" id="doneHours"></div>
       <p class="hint" id="doneNote"></p>
     </section>
 
@@ -231,7 +242,7 @@
   </main>
 </div>
 <div class="banner" id="banner">No internet</div>
-<div class="version" id="ver">v1.0</div>
+<div class="version" id="ver">v1.1</div>
 
 <script>
 (function () {
@@ -242,13 +253,15 @@
   var api = params.get('api') || API_URL; // ?api= is only for testing
   var IDLE_MS = 30000;
   var DONE_MS = 5000;
+  var HOURS_MS = 12000; // longer, so there is time to read the hours
   var REFRESH_MS = 60000;
 
   var LABELS = {
     IN:        { text: 'Start work',       cls: '' },
     LUNCH_OUT: { text: 'Out to lunch',     cls: 'alt' },
     LUNCH_IN:  { text: 'Back from lunch',  cls: '' },
-    OUT:       { text: 'Finish for today', cls: 'alt' }
+    OUT:       { text: 'Finish for today', cls: 'alt' },
+    HOURS:     { text: 'My hours',         cls: 'hours' }
   };
   var ICONS = {
     IN: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>',
@@ -256,6 +269,8 @@
     LUNCH_IN: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14l-5-5 5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>',
     OUT: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>'
   };
+  ICONS.HOURS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  var CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1F2E25" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="#1F2E25" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
   var CROSS = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -374,14 +389,17 @@
 
   // ---------- actions ----------
   function chooseWorker(w) {
-    if (!w.next || !w.next.length) {
-      message(true, w.name, 'Finished for today', 'You have already clocked out today.', '');
-      return;
-    }
+    var next = (w.next || []).slice();
+    var finished = !next.length;
     $('actName').textContent = w.name;
+    $('actNote').textContent = finished
+      ? 'You finished today' + (w.events && w.events.OUT ? ' at ' + w.events.OUT : '') + '.'
+      : '';
+    $('actNote').style.display = finished ? '' : 'none';
+    next.push('HOURS');
     var box = $('actions');
     box.innerHTML = '';
-    w.next.forEach(function (a) {
+    next.forEach(function (a) {
       var l = LABELS[a];
       var b = document.createElement('button');
       b.className = 'act ' + l.cls;
@@ -389,7 +407,7 @@
       b.addEventListener('click', function () { chooseAction(w, a); });
       box.appendChild(b);
     });
-    startCamera(); // warm up the camera while she chooses
+    if (!finished) startCamera(); // warm up the camera while she chooses
     show('s-actions');
   }
 
@@ -399,6 +417,8 @@
     renderDots();
     $('pinErr').textContent = '';
     $('pinTitle').textContent = w.name + ' — ' + LABELS[a].text;
+    $('cam').style.display = a === 'HOURS' ? 'none' : '';
+    if (a === 'HOURS') stopCamera();
     show('s-pin');
   }
 
@@ -462,16 +482,23 @@
   function submit() {
     if (busy || !current) return;
     busy = true;
-    var photo = snap();
     var cur = current;
+    var isHours = cur.action === 'HOURS';
+    var req = isHours
+      ? call('hours', { workerId: cur.worker.id, pin: pin })
+      : call('clock', { workerId: cur.worker.id, action: cur.action, pin: pin, photo: snap() });
     show('s-busy');
-    call('clock', { workerId: cur.worker.id, action: cur.action, pin: pin, photo: photo })
+    req
       .then(function (res) {
         busy = false;
+        if (res.ok && isHours) {
+          message(false, res.name, 'My hours', '', '', '', res.hours, true);
+          return;
+        }
         if (res.ok) {
           stopCamera();
           message(false, res.name, LABELS[res.action].text, '', res.time,
-                  res.photo ? '' : 'No photo was taken');
+                  res.photo ? '' : 'No photo was taken', res.hours);
           loadStatus(false);
           return;
         }
@@ -502,9 +529,36 @@
       });
   }
 
-  function message(bad, title, line, note, time, extra) {
+  function fmtMin(m) {
+    m = Math.max(0, Math.round(m || 0));
+    var h = Math.floor(m / 60), r = m % 60;
+    if (!h) return r + ' min';
+    return h + ' h' + (r ? ' ' + r + ' min' : '');
+  }
+
+  function renderHours(h) {
+    var box = $('doneHours');
+    box.innerHTML = '';
+    box.classList.toggle('on', !!h);
+    if (!h) return;
+    var so = h.todayInProgress ? ' so far' : '';
+    [[fmtMin(h.today), 'Today' + so],
+     [fmtMin(h.week), 'This week' + so],
+     [fmtMin(h.month), 'This month' + (h.monthDays ? ' · ' + h.monthDays + (h.monthDays === 1 ? ' day' : ' days') : '')]
+    ].forEach(function (s) {
+      var d = document.createElement('div');
+      d.className = 'stat';
+      d.innerHTML = '<div class="v"></div><div class="k"></div>';
+      d.querySelector('.v').textContent = s[0];
+      d.querySelector('.k').textContent = s[1];
+      box.appendChild(d);
+    });
+  }
+
+  function message(bad, title, line, note, time, extra, hours, hoursOnly) {
     $('doneTick').className = 'tick' + (bad ? ' bad' : '');
-    $('doneTick').innerHTML = bad ? CROSS : TICK;
+    $('doneTick').innerHTML = bad ? CROSS : (hoursOnly ? CLOCK : TICK);
+    renderHours(bad ? null : hours);
     $('doneTitle').innerHTML = '';
     $('doneTitle').appendChild(document.createTextNode(title + ' — ' + line));
     if (!bad) {
@@ -514,7 +568,7 @@
     $('doneNote').textContent = bad ? note : (extra || '');
     show('s-done');
     clearTimeout(doneTimer);
-    doneTimer = setTimeout(goHome, DONE_MS);
+    doneTimer = setTimeout(goHome, !bad && hours ? HOURS_MS : DONE_MS);
   }
 
   // ---------- navigation ----------
