@@ -564,10 +564,11 @@
     loadStatus(true);
   });
 
-  // Keep the screen awake while the page is open
-  function wake() { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(function () {}); }
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) { wake(); loadStatus(false); } });
-  wake();
+  // The tablet's own screen timeout switches the screen off; double tap wakes it.
+  // When the screen comes back on: return to the names and refresh who is clocked in.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && !$('s-setup').classList.contains('on')) { if (!busy) goHome(); loadStatus(false); }
+  });
 
   refreshTimer = setInterval(function () {
     if ($('s-home').classList.contains('on')) loadStatus(false);
